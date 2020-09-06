@@ -247,12 +247,30 @@ unsigned process_mask_dirty : 1; /* only used on partial block reads */
 struct lxt2_rd_trace *       	lxt2_rd_init(const char *name);
 void                    	lxt2_rd_close(struct lxt2_rd_trace *lt);
 
-_LXT2_RD_INLINE lxtint64_t	lxt2_rd_set_max_block_mem_usage(struct lxt2_rd_trace *lt, lxtint64_t block_mem_max);
+/*
+ * block memory set/get used to control buffering
+ */
+_LXT2_RD_INLINE lxtint64_t lxt2_rd_set_max_block_mem_usage( struct lxt2_rd_trace* lt, lxtint64_t block_mem_max ) {
+
+  lxtint64_t rc = lt->block_mem_max;
+
+  lt->block_mem_max = block_mem_max;
+
+  return( rc );
+
+}
 _LXT2_RD_INLINE lxtint64_t	lxt2_rd_get_block_mem_usage(struct lxt2_rd_trace *lt);
 _LXT2_RD_INLINE unsigned int	lxt2_rd_get_num_blocks(struct lxt2_rd_trace *lt);
 unsigned int			lxt2_rd_get_num_active_blocks(struct lxt2_rd_trace *lt);
 
-_LXT2_RD_INLINE lxtint32_t	lxt2_rd_get_num_facs(struct lxt2_rd_trace *lt);
+//_LXT2_RD_INLINE lxtint32_t	lxt2_rd_get_num_facs(struct lxt2_rd_trace *lt);
+_LXT2_RD_INLINE lxtint32_t lxt2_rd_get_num_facs( struct lxt2_rd_trace* lt ) {
+
+  return( lt ? lt->numfacs : 0 );
+
+}
+
+
 char *				lxt2_rd_get_facname(struct lxt2_rd_trace *lt, lxtint32_t facidx);
 struct lxt2_rd_geometry *	lxt2_rd_get_fac_geometry(struct lxt2_rd_trace *lt, lxtint32_t facidx);
 _LXT2_RD_INLINE lxtint32_t	lxt2_rd_get_fac_rows(struct lxt2_rd_trace *lt, lxtint32_t facidx);
@@ -260,7 +278,23 @@ _LXT2_RD_INLINE lxtint32_t	lxt2_rd_get_fac_msb(struct lxt2_rd_trace *lt, lxtint3
 _LXT2_RD_INLINE lxtint32_t	lxt2_rd_get_fac_lsb(struct lxt2_rd_trace *lt, lxtint32_t facidx);
 _LXT2_RD_INLINE lxtint32_t	lxt2_rd_get_fac_flags(struct lxt2_rd_trace *lt, lxtint32_t facidx);
 _LXT2_RD_INLINE lxtint32_t	lxt2_rd_get_fac_len(struct lxt2_rd_trace *lt, lxtint32_t facidx);
-_LXT2_RD_INLINE lxtint32_t	lxt2_rd_get_alias_root(struct lxt2_rd_trace *lt, lxtint32_t facidx);
+_LXT2_RD_INLINE lxtint32_t lxt2_rd_get_alias_root(struct lxt2_rd_trace *lt, lxtint32_t facidx) {
+
+  if( lt && (facidx < lt->numfacs) ) {
+
+    while( lt->flags[facidx] & LXT2_RD_SYM_F_ALIAS ) {
+      facidx = lt->rows[facidx];	/* iterate to next alias */
+    }
+
+    return( facidx );
+
+  } else {
+
+    return( ~((lxtint32_t)0) );
+
+  }
+
+}
 
 _LXT2_RD_INLINE char		lxt2_rd_get_timescale(struct lxt2_rd_trace *lt);
 _LXT2_RD_INLINE lxtint64_t	lxt2_rd_get_start_time(struct lxt2_rd_trace *lt);
@@ -269,7 +303,19 @@ _LXT2_RD_INLINE lxtint64_t	lxt2_rd_get_end_time(struct lxt2_rd_trace *lt);
 _LXT2_RD_INLINE int		lxt2_rd_get_fac_process_mask(struct lxt2_rd_trace *lt, lxtint32_t facidx);
 _LXT2_RD_INLINE int		lxt2_rd_set_fac_process_mask(struct lxt2_rd_trace *lt, lxtint32_t facidx);
 _LXT2_RD_INLINE int		lxt2_rd_clr_fac_process_mask(struct lxt2_rd_trace *lt, lxtint32_t facidx);
-_LXT2_RD_INLINE int		lxt2_rd_set_fac_process_mask_all(struct lxt2_rd_trace *lt);
+_LXT2_RD_INLINE int lxt2_rd_set_fac_process_mask_all( struct lxt2_rd_trace* lt ) {
+
+  int rc = 0;
+
+  if( lt ) {
+    lt->process_mask_dirty = 1;
+    memset( lt->process_mask, 0xff, ((lt->numfacs + 7) / 8) );
+    rc = 1;
+  }
+
+  return( rc );
+
+}
 _LXT2_RD_INLINE int		lxt2_rd_clr_fac_process_mask_all(struct lxt2_rd_trace *lt);
 
 				/* null value_change_callback calls an empty dummy function */

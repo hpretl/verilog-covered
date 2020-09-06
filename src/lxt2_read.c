@@ -839,7 +839,6 @@ struct lxt2_rd_trace* lxt2_rd_init( const char* name ) { PROFILE(LXT2_RD_INIT);
   } else {
 
     lxtint16_t   id = 0, version = 0;
-    lxtint16_t   foo;
     unsigned int rv;
 
     /* Cutoff after this number of bytes and force flush */
@@ -853,7 +852,7 @@ struct lxt2_rd_trace* lxt2_rd_init( const char* name ) { PROFILE(LXT2_RD_INIT);
     (void)fread( &version, 2, 1, lt->handle );
     (void)fread( &lt->granule_size, 1, 1, lt->handle );
 	
-    if( (foo = lxt2_rd_get_16( &id, 0 )) != LXT2_RD_HDRID ) {
+    if( lxt2_rd_get_16( &id, 0 ) != LXT2_RD_HDRID ) {
 
       print_output( "File specified with -lxt is not an LXT formatted dumpfile", FATAL, __FILE__, __LINE__ );
       lxt2_rd_close( lt );
@@ -1226,11 +1225,7 @@ void lxt2_rd_close(
 /* 
  * return number of facs in trace
  */
-_LXT2_RD_INLINE lxtint32_t lxt2_rd_get_num_facs( struct lxt2_rd_trace* lt ) {
 
-  return( lt ? lt->numfacs : 0 );
-
-}
 
 
 /*
@@ -1311,23 +1306,7 @@ _LXT2_RD_INLINE lxtint32_t lxt2_rd_get_fac_len( struct lxt2_rd_trace* lt, lxtint
 
 }
 
-_LXT2_RD_INLINE lxtint32_t lxt2_rd_get_alias_root(struct lxt2_rd_trace *lt, lxtint32_t facidx) {
 
-  if( lt && (facidx < lt->numfacs) ) {
-
-    while( lt->flags[facidx] & LXT2_RD_SYM_F_ALIAS ) {
-      facidx = lt->rows[facidx];	/* iterate to next alias */
-    }
-
-    return( facidx );
-
-  } else {
-
-    return( ~((lxtint32_t)0) );
-
-  }
-
-}
 
 /*
  * time queries
@@ -1503,19 +1482,7 @@ _LXT2_RD_INLINE int lxt2_rd_clr_fac_process_mask( struct lxt2_rd_trace *lt, lxti
 
 }
 
-_LXT2_RD_INLINE int lxt2_rd_set_fac_process_mask_all( struct lxt2_rd_trace* lt ) {
 
-  int rc = 0;
-
-  if( lt ) {
-    lt->process_mask_dirty = 1;
-    memset( lt->process_mask, 0xff, ((lt->numfacs + 7) / 8) );
-    rc = 1;
-  }
-
-  return( rc );
-
-}
 
 _LXT2_RD_INLINE int lxt2_rd_clr_fac_process_mask_all( struct lxt2_rd_trace* lt ) {
 
@@ -1531,18 +1498,6 @@ _LXT2_RD_INLINE int lxt2_rd_clr_fac_process_mask_all( struct lxt2_rd_trace* lt )
 
 }
 
-/*
- * block memory set/get used to control buffering
- */
-_LXT2_RD_INLINE lxtint64_t lxt2_rd_set_max_block_mem_usage( struct lxt2_rd_trace* lt, lxtint64_t block_mem_max ) {
-
-  lxtint64_t rc = lt->block_mem_max;
-
-  lt->block_mem_max = block_mem_max;
-
-  return( rc );
-
-}
 
 _LXT2_RD_INLINE lxtint64_t lxt2_rd_get_block_mem_usage( struct lxt2_rd_trace* lt ) {
 
@@ -1701,11 +1656,11 @@ int lxt2_rd_iter_blocks(
               strm.next_in   = zbuff + 10;
               strm.next_out  = pnt;
 
-              rc = inflateInit2( &strm, -MAX_WBITS );
+              (void)inflateInit2( &strm, -MAX_WBITS );
 
-              while (Z_OK == (rc = inflate( &strm, Z_NO_FLUSH )) );
+              while (Z_OK == (inflate( &strm, Z_NO_FLUSH )) );
 
-              rc = inflateEnd( &strm );
+              (void)inflateEnd( &strm );
 
               if( strm.total_out != unclen ) {
                 unsigned int rv = snprintf( user_msg, USER_MSG_LENGTH, "LXT:  Short read on subblock %lu vs %u (expected), ignoring...",
@@ -1767,18 +1722,18 @@ int lxt2_rd_iter_blocks(
         Try {
           (void)lxt2_rd_process_block( lt, b );
         } Catch_anonymous {
-          free_safe( b->mem, 0 );  /* TBD */
+          free_safe( b->mem, b->uncompressed_siz );
           Throw 0;
         }
 
         if( striped_kill ) {
-          free_safe( b->mem, 0 );  /* TBD */
+          free_safe( b->mem, b->uncompressed_siz );
           b->mem = NULL;
           b->uncompressed_siz = real_uncompressed_siz;
         } else if( lt->numblocks > 1 ) {	/* no sense freeing up the single block case */
           if( lt->block_mem_consumed > lt->block_mem_max ) {
             lt->block_mem_consumed -= b->uncompressed_siz;
-            free_safe( b->mem, 0 );  /* TBD */
+            free_safe( b->mem, b->uncompressed_siz );
             b->mem = NULL;
           }
         }

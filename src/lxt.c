@@ -146,15 +146,14 @@ void lxt_parse(
   struct lxt2_rd_geometry* g;
   lxtint32_t               newindx;
   char                     netname[4096];  /* Name of current signal */
-  char                     tmpname[4096];
 
   /* Open LXT file for opening and extract members */
   if( (lt = lxt2_rd_init( lxt_file )) != NULL ) {
 
     numfacs = lxt2_rd_get_num_facs( lt );
 
-    (void)lxt2_rd_set_fac_process_mask_all( lt );
-    (void)lxt2_rd_set_max_block_mem_usage( lt, 0 ); /* no need to cache blocks */
+    lxt2_rd_set_fac_process_mask_all( lt );
+    lxt2_rd_set_max_block_mem_usage( lt, 0 ); /* no need to cache blocks */
 
     /* Create initial symbol table */
     vcd_symtab = symtable_create();
@@ -173,11 +172,7 @@ void lxt_parse(
         newindx = lxt2_rd_get_alias_root( lt, i );
 
         /* Extract scope and net name from facility name */
-        strcpy( tmpname, lxt2_rd_get_facname( lt, i ) );
-        if( strchr( tmpname, '\\' ) != NULL ) {
-          strcat( tmpname, " " );
-        }
-        scope_extract_back( tmpname, netname, curr_inst_scope[0] );
+        scope_extract_back( lxt2_rd_get_facname( lt, i ), netname, curr_inst_scope[0] );
         db_sync_curr_instance();
 
         if( g->flags & LXT2_RD_SYM_F_DOUBLE ) {
