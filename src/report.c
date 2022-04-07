@@ -1201,12 +1201,12 @@ void command_report(
           assert( interp );
 
           if( Tcl_Init( interp ) == TCL_ERROR ) {
-            printf( "ERROR: %s\n", interp->result );
+            printf( "ERROR: %s\n", interp );
             Throw 0;
           }
 
           if( Tk_SafeInit( interp ) == TCL_ERROR ) {
-            printf( "ERROR: %s\n", interp->result );
+            printf( "ERROR: %s\n", interp );
             Throw 0;
           }
 
